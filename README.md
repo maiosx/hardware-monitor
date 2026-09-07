@@ -56,7 +56,10 @@ Or let the install script do both and restart the shell for you:
 ```bash
 curl -fsSL https://raw.githubusercontent.com/maiosx/hardware-monitor/main/install | bash -s -- --yes
 ```
-
+If the GPU sensor isn't working for some reason type this with your username in it
+```bash
+chmod +x /home/USER/.config/omarchy/plugins/hwmonitor.overlay/hw-probe
+```
 Suggested keybind in `~/.config/hypr/bindings.lua`:
 
 ```lua
