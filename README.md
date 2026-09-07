@@ -64,7 +64,7 @@ chmod +x /home/USER/.config/omarchy/plugins/hwmonitor.overlay/hw-probe
 Suggested keybind in `~/.config/hypr/bindings.lua`:
 
 ```lua
-o.bind("SUPER + M", "hwmonitor.overlay", "omarchy-shell hwmonitor.overlay toggle")
+o.bind("SUPER + H", "hwmonitor.overlay", "omarchy-shell hwmonitor.overlay toggle")
 ```
 
 ### From a local copy (no GitHub repo needed)
