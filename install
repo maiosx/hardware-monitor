@@ -1,0 +1,159 @@
+#!/bin/bash
+
+# Install (or update) the Hardware Monitor Overlay plugin.
+#
+# `omarchy plugin add` is the real install; this script just covers the two
+# things a bare `add` leaves you to find out on your own:
+#
+#   - `add` refuses outright when the plugin is already installed, since a
+#     second clone over a checkout is not an upgrade. Re-running this line to
+#     upgrade would otherwise report an error and change nothing; this picks
+#     `add` or `update` for you.
+#   - A plugin the shell has already mounted is not re-instantiated by a
+#     rescan (`keepLoaded`), so a fresh install or update is not visible
+#     until the shell restarts.
+#
+# Usage: install [--yes] [--help]
+#
+#   --yes   take every prompt as answered, for scripts and pipes
+#
+# From a terminal:
+#
+#   curl -fsSL https://raw.githubusercontent.com/maiosx/hardware-monitor/main/install | bash -s -- --yes
+#
+# Piping to bash gives the confirmation no terminal to appear on, which is
+# why that line carries --yes. Read the script first if you would rather not.
+
+set -uo pipefail
+
+ID="hwmonitor.overlay"
+URL="https://github.com/maiosx/hardware-monitor.git"
+PLUGINS_DIR="$HOME/.config/omarchy/plugins"
+
+ASSUME_YES=0
+CHANGED=0
+
+say()  { printf '%s\n' "$*"; }
+step() { printf '\n\033[1m%s\033[0m\n' "$*"; }
+warn() { printf '  ! %s\n' "$*" >&2; }
+fail() { printf 'install: %s\n' "$*" >&2; exit 1; }
+
+while (( $# > 0 )); do
+  case "$1" in
+    --yes|-y)  ASSUME_YES=1; shift ;;
+    -h|--help) sed -n '3,20p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    *)         fail "unknown option: $1 (try --help)" ;;
+  esac
+done
+
+interactive() { [[ -t 0 && -t 1 ]]; }
+
+if (( ! ASSUME_YES )) && ! interactive; then
+  fail "no terminal to ask on. Re-run it from a shell, or pass --yes if you have read what it does."
+fi
+
+ask() {
+  (( ASSUME_YES )) && return 0
+  local reply
+  read -r -p "  $1 [Y/n] " reply </dev/tty || return 1
+  [[ -z $reply || $reply == [Yy]* ]]
+}
+
+installed() { [[ -d "$PLUGINS_DIR/$1" ]]; }
+
+# 0 enabled, 1 disabled, 2 could not tell (the IPC call to the running shell
+# failed, which is different from an honest "no").
+plugin_state() {
+  local listing
+  listing=$(omarchy plugin list --json 2>/dev/null) || return 2
+  command -v jq >/dev/null 2>&1 || return 2
+  jq -e 'type == "array" and length > 0' >/dev/null 2>&1 <<<"$listing" || return 2
+  jq -e --arg id "$1" 'any(.[]; .id == $id and .enabled == true)' \
+    >/dev/null 2>&1 <<<"$listing" && return 0
+  return 1
+}
+
+# --------------------------------------------------------------- preflight
+
+step "Checking what this machine has"
+
+command -v omarchy >/dev/null 2>&1 ||
+  fail "omarchy not found. This is a plugin for Omarchy 4's Quickshell shell."
+[[ -f /usr/share/omarchy/shell/shell.qml ]] ||
+  fail "the Omarchy shell is not installed. This plugin has nothing to load into."
+command -v git >/dev/null 2>&1 || fail "git is required and is not installed."
+command -v jq >/dev/null 2>&1 ||
+  warn "jq is missing — install/enable state checks will be skipped, not failed"
+
+say "  ok  omarchy, its shell, git"
+
+# ----------------------------------------------------------- the plugin
+
+step "Hardware Monitor Overlay"
+
+head_of() { git -C "$PLUGINS_DIR/$1" rev-parse --short HEAD 2>/dev/null; }
+
+if installed "$ID"; then
+  say "  already installed — updating instead of re-adding"
+  before=$(head_of "$ID")
+  if (( ASSUME_YES )); then
+    omarchy plugin update "$ID" --yes || fail "update failed"
+  else
+    omarchy plugin update "$ID" || fail "update failed"
+  fi
+  [[ $(head_of "$ID") != "$before" ]] && CHANGED=1
+else
+  if (( ASSUME_YES )); then
+    omarchy plugin add "$URL" --enable --yes || fail "add failed"
+  else
+    omarchy plugin add "$URL" --enable || fail "add failed"
+  fi
+  CHANGED=1
+fi
+
+plugin_state "$ID"
+case $? in
+  0) say "  enabled" ;;
+  2) warn "could not ask the shell whether it is enabled — leaving it alone" ;;
+  *)
+    if ask "Enable Hardware Monitor Overlay now?"; then
+      omarchy plugin enable "$ID" && CHANGED=1 ||
+        warn "could not enable; run: omarchy plugin enable $ID"
+    else
+      say "  left disabled — turn it on later with: omarchy plugin enable $ID"
+    fi
+    ;;
+esac
+
+# --------------------------------------------------------------- restart
+
+if (( CHANGED )); then
+  step "Restarting the shell"
+  if omarchy-restart-shell; then
+    say "  done"
+  else
+    warn "the shell did not restart — run 'omarchy restart shell' yourself when you can"
+  fi
+else
+  step "Nothing moved"
+  say "  everything was already in place; leaving the shell alone"
+fi
+
+step "Where that leaves you"
+
+version_of() { jq -r '.version // "?"' "$PLUGINS_DIR/$ID/manifest.json" 2>/dev/null || echo "?"; }
+head_at()    { git -C "$PLUGINS_DIR/$ID" rev-parse --short HEAD 2>/dev/null || echo "not a git checkout"; }
+
+plugin_state "$ID"
+case $? in
+  0) state="on" ;;
+  2) state="installed (could not reach the shell to ask)" ;;
+  *) state="installed, not enabled" ;;
+esac
+printf '  %-26s %-9s %-10s %s\n' "$ID" "$(version_of)" "$(head_at)" "$state"
+
+cat <<NEXT
+
+  Edit blurAmount / blurRadiusPx / scrimOpacity in Surface.qml to change the look.
+  Update later with:  ~/.config/omarchy/plugins/$ID/update
+NEXT

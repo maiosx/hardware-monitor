@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "hwmonitor.overlay",
+  "name": "Hardware Monitor Overlay",
+  "version": "0.1.0",
+  "author": "maiosx",
+  "license": "MIT",
+  "description": "A fullscreen blurred overlay with CPU, GPU, memory, and temperature drawn as centered dials. Toggle with the bar HW icon.",
+  "repository": "https://github.com/maiosx/hardware-monitor",
+  "keywords": ["hardware", "monitor", "overlay", "blur", "quickshell", "cpu", "gpu", "memory", "temperature"],
+  "kinds": ["panel", "bar-widget"],
+  "keepLoaded": true,
+  "entryPoints": {
+    "panel": "Surface.qml",
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "HW Monitor Overlay",
+    "category": "System",
+    "allowMultiple": false,
+    "defaultSection": "right"
+  }
+}

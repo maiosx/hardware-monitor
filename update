@@ -1,0 +1,73 @@
+#!/bin/bash
+
+# Update the Hardware Monitor Overlay plugin and restart the shell so the
+# update is one you can see.
+#
+# `omarchy plugin update <id>` already does the careful part: fetch, show the
+# diff, fast-forward only, validate, roll back on failure. This wraps it for
+# the one thing it leaves out: a rescan is not a reload. `keepLoaded` panels
+# are mounted once and outlive the file they came from, so an update lands on
+# disk and changes nothing on screen until the shell restarts — skipped here
+# when nothing actually moved.
+#
+# Usage: update [--yes] [--help]
+
+set -uo pipefail
+
+ID="hwmonitor.overlay"
+PLUGINS_DIR="$HOME/.config/omarchy/plugins"
+
+ASSUME_YES=0
+
+say()  { printf '%s\n' "$*"; }
+step() { printf '\n\033[1m%s\033[0m\n' "$*"; }
+warn() { printf '  ! %s\n' "$*" >&2; }
+fail() { printf 'update: %s\n' "$*" >&2; exit 1; }
+
+while (( $# > 0 )); do
+  case "$1" in
+    --yes|-y)  ASSUME_YES=1; shift ;;
+    -h|--help) sed -n '3,14p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    *)         fail "unknown option: $1 (try --help)" ;;
+  esac
+done
+
+command -v omarchy >/dev/null 2>&1 || fail "omarchy not found."
+[[ -d "$PLUGINS_DIR/$ID" ]] ||
+  fail "$ID is not installed. Install it with: omarchy plugin add https://github.com/maiosx/hardware-monitor.git"
+
+head_of() { git -C "$PLUGINS_DIR/$ID" rev-parse --short HEAD 2>/dev/null; }
+version_of() { jq -r '.version // "?"' "$PLUGINS_DIR/$ID/manifest.json" 2>/dev/null || echo "?"; }
+
+before=$(head_of)
+vbefore=$(version_of)
+
+step "Hardware Monitor Overlay"
+if (( ASSUME_YES )); then
+  omarchy plugin update "$ID" --yes || fail "update failed"
+else
+  omarchy plugin update "$ID" || fail "update failed"
+fi
+
+after=$(head_of)
+vafter=$(version_of)
+
+if [[ -n $before && $before == "$after" ]]; then
+  step "Nothing moved"
+  say "  already on the newest version; leaving the shell alone"
+  exit 0
+fi
+
+if [[ $vbefore != "$vafter" ]]; then
+  say "  $vbefore → $vafter   ($before → $after)"
+else
+  say "  $vafter (unchanged)   $before → $after"
+fi
+
+step "Restarting the shell"
+if omarchy-restart-shell; then
+  say "  done — the new code is what is on your desktop"
+else
+  warn "the shell did not restart. The update is on disk; run 'omarchy restart shell' to see it."
+  exit 1
+fi
