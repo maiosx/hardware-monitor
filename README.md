@@ -1,4 +1,5 @@
 # Hardware Monitor Overlay
+<img width="2560" height="1440" alt="Preview" src="Preview.png" />
 
 A fullscreen blurred overlay showing live CPU, GPU, memory, and GPU VRAM
 as centered dials — a HUD you toggle on, glance at, and dismiss.
