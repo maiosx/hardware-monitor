@@ -1,6 +1,6 @@
 # Hardware Monitor Overlay
 
-A fullscreen blurred overlay showing live CPU, GPU, memory, and temperature
+A fullscreen blurred overlay showing live CPU, GPU, memory, and GPU VRAM
 as centered dials — a HUD you toggle on, glance at, and dismiss.
 
 | | |
@@ -104,9 +104,10 @@ Four dials, centered on screen:
 
 - **CPU** — load %, with clock speed underneath
 - **GPU** — load %, with temperature underneath (hidden entirely if no GPU
-  telemetry is found — laptop iGPU-only setups just show three dials)
+  telemetry is found — laptop iGPU-only setups just show two dials)
 - **MEM** — usage %, with used/total GiB underneath
-- **TEMP** — CPU package temperature, scaled against the critical threshold
+- **VRAM** — GPU memory usage %, with used/total GiB underneath (hidden
+  alongside GPU when there's no GPU telemetry)
 
 Each ring shifts from a cool accent color toward warm red as the reading
 climbs from its warning threshold to its critical one, the same "warm up
@@ -121,8 +122,7 @@ At the top of `Surface.qml`:
 | `blurAmount` | 0–1, how strong the backdrop blur looks |
 | `blurRadiusPx` | how far the blur reaches, in pixels |
 | `scrimOpacity` | how much the blurred wallpaper is darkened for contrast |
-| `warnPercent` / `criticalPercent` | load thresholds for CPU/GPU/MEM color |
-| `warnTempC` / `criticalTempC` | temperature thresholds for color and the TEMP dial's scale |
+| `warnPercent` / `criticalPercent` | load thresholds for CPU/GPU/MEM/VRAM color |
 
 Edit, then `~/.config/omarchy/plugins/hwmonitor.overlay/update` if
 installed from git, or `omarchy restart shell` if editing the local copy

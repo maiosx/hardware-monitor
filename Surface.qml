@@ -7,7 +7,7 @@ import "Model.js" as Model
 
 // A fullscreen layer-shell overlay: a blurred copy of the current wallpaper
 // (same technique as the Wallpaper Blur plugin's Surface.qml, borrowed
-// wholesale) plus a dark scrim, with live CPU / GPU / memory / temperature
+// wholesale) plus a dark scrim, with live CPU / GPU / memory / GPU VRAM
 // drawn as centered dials on top.
 //
 // Unlike Wallpaper Blur this sits on the Overlay layer and takes keyboard
@@ -31,8 +31,6 @@ Item {
 
   property int warnPercent: 70
   property int criticalPercent: 90
-  property int warnTempC: 75
-  property int criticalTempC: 90
 
   // ---- state ----------------------------------------------------------
 
@@ -99,15 +97,12 @@ Item {
   readonly property real cpuFraction: hw.cpuPercent >= 0 ? hw.cpuPercent / 100 : -1
   readonly property real ramFraction: hw.memPercent >= 0 ? hw.memPercent / 100 : -1
   readonly property real gpuFraction: hw.hasGpu && hw.gpuPercent >= 0 ? hw.gpuPercent / 100 : -1
-  // Temperature drawn on a 0..criticalTempC scale so the ring fills up as it
-  // approaches the danger zone rather than a generic 0-100 scale.
-  readonly property real tempFraction: hw.cpuTempC >= 0
-    ? Math.max(0, Math.min(1, hw.cpuTempC / Math.max(1, root.criticalTempC))) : -1
+  readonly property real vramFraction: hw.hasGpu && hw.gpuVramPercent >= 0 ? hw.gpuVramPercent / 100 : -1
 
   readonly property real cpuSeverity: Model.severity(hw.cpuPercent, root.warnPercent, root.criticalPercent)
   readonly property real ramSeverity: Model.severity(hw.memPercent, root.warnPercent, root.criticalPercent)
   readonly property real gpuSeverity: Model.severity(hw.gpuPercent, root.warnPercent, root.criticalPercent)
-  readonly property real tempSeverity: Model.severity(hw.cpuTempC, root.warnTempC, root.criticalTempC)
+  readonly property real vramSeverity: Model.severity(hw.gpuVramPercent, root.warnPercent, root.criticalPercent)
 
   Variants {
     model: Quickshell.screens
@@ -210,11 +205,14 @@ Item {
             }
 
             Dial {
-              title: "TEMP"
-              fraction: root.tempFraction
-              valueText: hw.cpuTempC >= 0 ? Model.formatTemp(hw.cpuTempC, false) : ""
-              subText: "CPU"
-              severity: root.tempSeverity
+              visible: hw.hasGpu
+              title: "VRAM"
+              fraction: root.vramFraction
+              valueText: Model.formatPercent(hw.gpuVramPercent)
+              subText: hw.gpuVramTotalBytes > 0
+                ? Model.formatGib(Model.gibFromBytes(hw.gpuVramUsedBytes)) + " / " +
+                  Model.formatGib(Model.gibFromBytes(hw.gpuVramTotalBytes)) + " GiB" : ""
+              severity: root.vramSeverity
             }
           }
 
