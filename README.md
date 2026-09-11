@@ -18,7 +18,9 @@ It's built two ways at once:
 - The blurred backdrop is the **Wallpaper Blur** plugin's `Surface.qml`
   technique, reused as-is (resolve the current wallpaper symlink, draw it
   with `QtQuick.Effects.MultiEffect`) — just moved from the Background layer
-  to the Overlay layer, and made toggleable instead of always-on.
+  to the Overlay layer, and made toggleable instead of always-on. If the
+  Omarchy wallpaper link is unavailable, it also finds the image passed to a
+  running `swaybg` process.
 - The sensor readings are the **Hardware Monitor** plugin's data layer
   (`Service.qml`, `Model.js`, `hw-probe`), copied over unmodified — they
   have no dependency on that plugin's bar-widget code or the shell's theme
