@@ -36,7 +36,7 @@ Item {
 
   Process {
     id: toggler
-    command: ["omarchy-shell", "-q", "hwmonitor.overlay", "toggle"]
+    command: ["omarchy-shell", "-q", "shell", "toggle", "hwmonitor.overlay"]
     onExited: Qt.callLater(() => { query.running = true })
   }
 

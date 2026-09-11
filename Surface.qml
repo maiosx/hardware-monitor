@@ -36,6 +36,15 @@ Item {
 
   // Runtime on/off. The bar widget and IPC flip this.
   property bool overlayVisible: false
+  readonly property bool opened: overlayVisible
+
+  function open(payloadJson) {
+    overlayVisible = true
+  }
+
+  function close() {
+    overlayVisible = false
+  }
 
   // Same dual-path resolution Wallpaper Blur uses — Omarchy has moved this
   // symlink before.
@@ -124,7 +133,7 @@ Item {
         required property var modelData
 
         screen: modelData
-        visible: root.overlayVisible && root.wallpaperPath.length > 0
+        visible: root.overlayVisible
         color: "transparent"
 
         anchors { top: true; bottom: true; left: true; right: true }
